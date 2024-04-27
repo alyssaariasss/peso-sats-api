@@ -15,7 +15,7 @@ cd peso-sats-api
 cargo build
 ```
 
-3. Create a .env file in the project root directory and add your CoinGecko API key.
+3. Create a .env file in the project root directory and add your CoinGecko API key. Follow [this guide](https://support.coingecko.com/hc/en-us/articles/21880397454233-User-Guide-How-to-sign-up-for-CoinGecko-Demo-API-and-generate-an-API-key) to generate a demo API key.
 ```
 API_KEY="your_api_key"
 ```
