@@ -1,4 +1,4 @@
-use axum::{routing::get, Json, Router};
+use axum::{routing::post, Json, Router};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -12,23 +12,30 @@ struct PriceData {
     php: f64,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct ConvertedPeso {
+    btc_to_php: f64,
+    php: f64,
+    sats: f64,
+}
+
+const BTC_TO_SATS: f64 = 100_000_000.00;
+
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().expect("Failed to read .env file");
 
     // create axum router
-    let app = Router::new().route("/", get(fetch_btc_to_sats));
+    let app = Router::new().route("/", post(convert_peso_to_sats));
 
     // start server
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn fetch_btc_to_sats() -> Json<PriceResponse> {
-    // curcl command: curl "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=php&x_cg_demo_api_key={api_key}"
-
+// connect to coingecko
+async fn connect_to_client() -> PriceResponse {
     let api_key = std::env::var("API_KEY").expect("API_KEY must be set");
-    // let url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=php";
 
     let response = Client::new()
         .get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=php")
@@ -37,7 +44,18 @@ async fn fetch_btc_to_sats() -> Json<PriceResponse> {
         .await
         .unwrap();
 
-    let response_data: PriceResponse = response.json().await.unwrap();
+    response.json().await.unwrap()
+}
 
-    Json(response_data)
+// convert given php amount to sats
+async fn convert_peso_to_sats(Json(body): Json<PriceData>) -> Json<ConvertedPeso> {
+    let client = connect_to_client().await;
+    let btc_to_php = client.bitcoin.php;
+    let converted_sats = body.php / btc_to_php * BTC_TO_SATS;
+
+    Json(ConvertedPeso {
+        btc_to_php,
+        php: body.php,
+        sats: converted_sats,
+    })
 }
