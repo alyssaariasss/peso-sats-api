@@ -31,7 +31,7 @@ struct ConvertedPeso {
 /// 1 BTC = 100,000,000 SATS
 const BTC_TO_SATS: f64 = 100_000_000.00;
 /// API endpoint to fetch Bitcoin price in PHP.
-const CLIENT_URL: &'static str =
+const CLIENT_URL: &str =
     "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=php";
 
 #[tokio::main]
@@ -69,11 +69,11 @@ async fn connect_to_client() -> Result<PriceResponse, StatusCode> {
     // Check for successful response status
     if response.status().is_success() {
         match response.json().await {
-            Ok(data) => return Ok(data),
-            Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+            Ok(data) => Ok(data),
+            Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
         }
     } else {
-        return Err(response.status());
+        Err(response.status())
     }
 }
 
