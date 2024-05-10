@@ -27,11 +27,9 @@ API_KEY="your_api_key"
 cargo run
 ```
 
-2. Send a **POST** request to `http://localhost:3000` with a **JSON input** containing the PHP amount to be converted.
+2. Send a **POST** request to `http://localhost:3000/php_to_sats` with a query parameter **amount** containing the PHP amount to be converted.
 ```
-{
-  "php": 10.00
-}
+amount=10.0
 ```
 
 3. The API will respond with the equivalent amount in sats, together with the current bitcoin to peso conversion rate, and your PHP input amount using this format:
