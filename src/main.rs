@@ -1,17 +1,19 @@
-use axum::{routing::post, Json, Router};
+use std::collections::HashMap;
+
+use axum::{extract::Query, routing::post, Json, Router};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 
 /// Model to hold response from CoinGecko client.
 #[derive(Debug, Serialize, Deserialize)]
 struct PriceResponse {
-    /// Current Bitcoin price in PHP.
     bitcoin: PriceData,
 }
 
-/// Model to hold user-provided PHP amount to be converted.
+/// Model to hold PHP amount from CoinGecko client.
 #[derive(Debug, Serialize, Deserialize)]
 struct PriceData {
+    /// Current Bitcoin price in PHP.
     php: f64,
 }
 
@@ -40,7 +42,7 @@ async fn main() {
     dotenv::dotenv().expect("Failed to read .env file");
 
     // Create axum router
-    let app = Router::new().route("/", post(convert_peso_to_sats));
+    let app = Router::new().route("/php_to_sats", post(convert_peso_to_sats));
 
     // Start server
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -81,29 +83,35 @@ async fn connect_to_client() -> Result<PriceResponse, StatusCode> {
 ///
 /// # Arguments
 ///
-/// * `body` - Json containing the PHP amount to be converted.
+/// * `query` - Query parameters containing the PHP amount (`amount`) to be converted.
 ///
 /// # Returns
 ///
 /// Result containing either a Json object with the converted value as a `ConvertedPeso` struct
 /// or a `StatusCode` indicating an error in the client.
 async fn convert_peso_to_sats(
-    Json(body): Json<PriceData>,
+    Query(query): Query<HashMap<String, String>>,
 ) -> Result<Json<ConvertedPeso>, StatusCode> {
+    // Parse query parameter as f64
+    let input_php = query
+        .get("amount")
+        .unwrap_or(&String::from(""))
+        .parse::<f64>()
+        .unwrap();
+
     // Fetch client response
-    let client = match connect_to_client().await {
-        Ok(data) => data,
+    let btc_to_php = match connect_to_client().await {
+        Ok(data) => data.bitcoin.php,
         Err(status) => return Err(status),
     };
 
-    let btc_to_php = client.bitcoin.php;
-
     // Calculate the equivalent amount in sats for the given PHP input
-    let converted_sats = body.php / btc_to_php * BTC_TO_SATS;
+    let output_sats = input_php / btc_to_php * BTC_TO_SATS;
 
+    // Return converted amount details
     Ok(Json(ConvertedPeso {
         btc_to_php,
-        input_php: body.php,
-        output_sats: converted_sats,
+        input_php,
+        output_sats,
     }))
 }
